@@ -1,2 +1,109 @@
-# uExplorer
-uExplorer Solaris info gather script
+## uExplorer
+
+uExplorer is a Solaris host inventory script that connects remotely to a Solaris system, gathers configuration and capacity information, and produces a flattened text dump plus an HTML report.
+
+### What it collects (Solaris 11–aware)
+
+- **General system info**: hostname, OS/version, kernel, CPU (model/count/speed), memory, timezone, uptime, load averages.
+- **Network**:
+  - NIC counts by type/driver (including modern `net*`/VLAN interfaces).
+  - Per–interface details: IPs, MAC, netmasks, status, basic error counters and link properties when available.
+- **Zones**:
+  - Global and non‑global zones via `zoneadm list -cv`.
+  - For each zone: ID, state, zonepath, brand, IP type.
+- **Disks & storage**:
+  - SCSI disk inventory from `iostat -En` + `format` (ID, path, vendor/product tag, serial, size/GB).
+  - Optional Solaris Volume Manager layout (if `metastat` is present).
+  - HBA information via EMC `inq.sol64 -hba` when available.
+- **ZFS**:
+  - Pools from `zpool list` and `zpool status -v` (size, alloc, free, health, leaf devices).
+  - Datasets from `zfs list` (used/avail, recordsize, compression, mountpoint).
+  - Snapshots (name, used, creation time).
+  - ARC snapshot from `kstat` (size, target size, hits/misses, hit ratio).
+- **Boot environments**:
+  - `beadm list -H` summary (name, active flags, mountpoint, space, policy, created).
+- **SMF**:
+  - Non‑online services (maintenance/legacy_run/etc) from `svcs -H -o state,FMRI`.
+- **Packages / IPS**:
+  - Installed and upgradable package counts.
+  - Publishers and origins from `pkg publisher`.
+
+All raw data is written into per‑topic files under a timestamped `RESULTS/<hostname>_<timestamp>` directory on the Solaris host, then flattened into a single `flat.txt` file and summarized visually in `report.html`.
+
+### Layout
+
+- `uExplorer.ksh` – main orchestrator to run all collectors, flatten results, and generate HTML.
+- `run.bash` – convenience wrapper on your Mac to `rsync` the repo to the Solaris host and run `uExplorer.ksh` there.
+- `INCLUDES/` – shared settings and helper definitions:
+  - `settings.ksh` – defines `EHOME`, `RESULTS`, and `PROGS`.
+  - `unixcmds.ksh` – Solaris‑specific command paths and common utilities (`$NAWK`, `$GREP`, `$IFCONFIG`, etc.).
+  - `nic_funcs_solaris.ksh` – helper functions for NIC parsing (speed/duplex/downgrade checks, stats).
+- `PROGRAMS/` – individual data collectors:
+  - `general.ksh` – general system summary.
+  - `nics.ksh` – network interfaces summary and per‑NIC details.
+  - `hbainfo.ksh` – HBA details (EMC `inq.sol64`‑based, best effort).
+  - `disks.ksh` – disk inventory, size, some `luxadm` linkage, internal meta layout (if `metastat` exists).
+  - `inqs.ksh` – EMC/array WWN inventory using `inq.sol64` (runs only if the binary is present/executable).
+  - `luxadm.ksh` – `luxadm display` summary for disk WWNs.
+  - `swapinfo.pl` – swap/memory usage breakdown (Perl script).
+  - `zones.ksh` – Solaris Zones summary.
+  - `zfs.ksh` – ZFS pools, datasets, snapshots, and vdev mapping.
+  - `zfs_arc.ksh` – ZFS ARC statistics.
+  - `bootenvs.ksh` – boot environments via `beadm`.
+  - `smf.ksh` – non‑online SMF services.
+  - `pkg.ksh` – IPS publisher and package count summary.
+
+### Prerequisites on the Solaris host
+
+Core utilities:
+
+- Standard Solaris 11 install with:
+  - `ksh`, `nawk`, `egrep`, `grep`, `ifconfig`, `netstat`, `kstat`, `truss`, `date`, `psrinfo`, `prtconf`,
+    `isainfo`, `luxadm`, `df`, `iostat`, `format`, `svcs`, `pkg`.
+- Optional but used when available:
+  - `zoneadm`, `zonecfg`, `zpool`, `zfs`, `beadm`, `metastat`, EMC `inq.sol64`.
+
+The script degrades gracefully when optional tools are missing (for example, ZFS sections are skipped if `zpool`/`zfs` are absent).
+
+### Running it
+
+From your Mac (or wherever this git repo lives), assuming SSH root access as configured in `run.bash`:
+
+```bash
+cd /Users/rdircio/uExplorer   # or wherever you cloned this repo
+./run.bash
+```
+
+`run.bash` will:
+
+1. `rsync` the local tree to the Solaris host (default: `root@hoshibb.local:/opt/uExplorer/`).
+2. SSH to the host and run:
+
+   ```bash
+   cd /opt/uExplorer && ./uExplorer.ksh
+   ```
+
+3. On the Solaris host, `uExplorer.ksh`:
+   - Sets `EHOME` based on its own path.
+   - Initializes `RESULTS/<hostname>_<timestamp>` and `PROGS`.
+   - Runs all collectors in `PROGRAMS/`.
+   - Flattens all per‑file outputs into `RESULTS/.../flat.txt`.
+   - Generates `RESULTS/.../report.html` and prints its full path.
+
+To fetch the latest HTML report back to your local workspace, you can use (already wired into the repo in this session):
+
+```bash
+rsync -av root@hoshibb.local:"/opt/uExplorer/RESULTS/<latest_dir>/report.html" RESULTS/report-latest.html
+```
+
+Then open `RESULTS/report-latest.html` in a browser.
+
+### Adapting for other environments
+
+- To change the target host or destination path, edit `run.bash`:
+  - SSH destination (`root@hoshibb.local`) and remote path (`/opt/uExplorer/`).
+- To run directly on a Solaris host without rsync:
+  - Clone the repo on that host.
+  - Run `./uExplorer.ksh` as root from the repo directory.
+
+The collectors are written to prefer Solaris 11 paths and tools, while remaining usable on older Solaris 10 systems where the legacy commands still exist.
