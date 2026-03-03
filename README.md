@@ -65,45 +65,54 @@ Core utilities:
 
 The script degrades gracefully when optional tools are missing (for example, ZFS sections are skipped if `zpool`/`zfs` are absent).
 
-### Running it
+### Running it directly on Solaris
 
-From your Mac (or wherever this git repo lives), assuming SSH root access as configured in `run.bash`:
-
-```bash
-cd /Users/rdircio/uExplorer   # or wherever you cloned this repo
-./run.bash
-```
-
-`run.bash` will:
-
-1. `rsync` the local tree to the Solaris host (default: `root@hoshibb.local:/opt/uExplorer/`).
-2. SSH to the host and run:
+1. **Copy the entire `uExplorer` directory to the Solaris server**, for example:
 
    ```bash
-   cd /opt/uExplorer && ./uExplorer.ksh
+   # on your workstation
+   scp -r uExplorer root@your-solaris-host:/opt/uExplorer
    ```
 
-3. On the Solaris host, `uExplorer.ksh`:
-   - Sets `EHOME` based on its own path.
-   - Initializes `RESULTS/<hostname>_<timestamp>` and `PROGS`.
-   - Runs all collectors in `PROGRAMS/`.
-   - Flattens all per‑file outputs into `RESULTS/.../flat.txt`.
-   - Generates `RESULTS/.../report.html` and prints its full path.
+2. **On the Solaris host**, as root:
 
-To fetch the latest HTML report back to your local workspace, you can use (already wired into the repo in this session):
+   ```bash
+   cd /opt/uExplorer
+   ./uExplorer.ksh
+   ```
+
+`uExplorer.ksh` will:
+
+- Set `EHOME` based on its own path.
+- Initialize `RESULTS/<hostname>_<timestamp>` and `PROGS`.
+- Run all collectors in `PROGRAMS/`.
+- Flatten all per‑file outputs into `RESULTS/.../flat.txt`.
+- Generate `RESULTS/.../report.html` and print its full path.
+
+You can then copy the HTML report back to your workstation and open it in a browser, for example:
 
 ```bash
-rsync -av root@hoshibb.local:"/opt/uExplorer/RESULTS/<latest_dir>/report.html" RESULTS/report-latest.html
+scp root@your-solaris-host:/opt/uExplorer/RESULTS/<latest_dir>/report.html ./report-latest.html
 ```
 
-Then open `RESULTS/report-latest.html` in a browser.
+### Optional: using `run.bash` from your workstation
 
-### Adapting for other environments
+If you prefer not to manage the copy/SSH steps manually, you can edit and use `run.bash` on your workstation:
 
-- To change the target host or destination path, edit `run.bash`:
-  - SSH destination (`root@hoshibb.local`) and remote path (`/opt/uExplorer/`).
-- To run directly on a Solaris host without rsync:
-  - Clone the repo on that host.
-  - Run `./uExplorer.ksh` as root from the repo directory.
+- It `rsync`s the local tree to the Solaris host.
+- It SSHes to the host and runs `uExplorer.ksh` in the remote directory.
+
+To use it:
+
+1. Edit `run.bash` and adjust:
+   - SSH destination (for example `root@your-solaris-host`).
+   - Remote path (for example `/opt/uExplorer/`).
+
+2. From your workstation:
+
+   ```bash
+   cd /path/to/uExplorer
+   ./run.bash
+   ```
 
 The collectors are written to prefer Solaris 11 paths and tools, while remaining usable on older Solaris 10 systems where the legacy commands still exist.
