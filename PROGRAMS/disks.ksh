@@ -7,7 +7,11 @@ format < /dev/null| egrep -iv 'Specify|Search|available' | grep . | nawk 'ORS=NR
 	DEV=`echo $l | nawk '{ print $NF }'`
         #---- the next one is very nice, gets ONLY what is enclosed in "< >"
 	SZ=`grep "${ID};" /tmp/iostat-En.$$ | awk -F";" '{ print $9 }'| nawk -v RS=">" -F'<' '{print $NF}'|sed 's/bytes//g'`
-	SZ=$(( ((($SZ/1000)/1000)/1000) ))
+	if [ -n "$SZ" ] && echo "$SZ" | grep '^[0-9][0-9]*$' > /dev/null 2>&1; then
+		SZ=$(( ((($SZ/1000)/1000)/1000) ))
+	else
+		SZ=0
+	fi
         echo "$DEV;`grep \"${ID};\" /tmp/iostat-En.$$`" | awk -F";" '{ print "ID="$2 "\nPATH=" $1 "\nMANUFACTURER=" $6 "\nTAG=" $7 "\nSERIAL=" $9 "\nSIZE=" $10 }'
 	echo "SIZEGB=$SZ"
 	luxadm display /dev/rdsk/${ID}s2 | egrep 'WWN|\/dev' | sed 's/\/dev\/rdsk\///g' | tr -s " " | grep . | while read f;do
@@ -15,10 +19,12 @@ format < /dev/null| egrep -iv 'Specify|Search|available' | grep . | nawk 'ORS=NR
 	done
 done
 
+if command -v metastat > /dev/null 2>&1; then
 echo "---------------internal"
 df -kl | egrep " /$| /opt$| /var$| /usr$| /var/opt$| /var/tmp$" | awk '{ print $1 }' | awk -F'/' '{ print $NF }' |while read md;do
 for l in `metastat -p $md`;do echo $l;done | grep "c[0-9]*t[0-9]*d[0-9]*s[0-9]*"
 done | sort |uniq
+fi
 
 
 

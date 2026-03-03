@@ -60,5 +60,5 @@ $ECHO "KERNEL_TYPE=$KERNELTYPE"
 $ECHO "HOSTID=$HOSTID"
 $ECHO "UPTIME=$UPTIME"
 $ECHO "LOAD_AVERAGES=$LOAD_AVERAGES"
-$ECHO "TIMEZONE=`$GREP "TZ=" /etc/TIMEZONE | $NAWK -F"=" '{ print $2 }'`"
+$ECHO "TIMEZONE=`( [ -f /etc/TIMEZONE ] && $GREP \"^TZ=\" /etc/TIMEZONE | $NAWK -F\"=\" '{ print $2 }' ) || ( [ -f /etc/default/init ] && $GREP \"^TZ=\" /etc/default/init | $NAWK -F\"=\" '{ print $2 }' ) || $DATE +%Z`"
 ) > ${RESULTS}/summary

@@ -2,8 +2,8 @@
 
 PLAT=`uname -s`
 if [ $PLAT = "SunOS" ];then
-	IFCONFIG=/usr/sbin/ifconfig
-	ECHO=/usr/ucb/echo
+IFCONFIG=/usr/sbin/ifconfig
+ECHO=/usr/bin/echo
 	NETSTAT=/usr/bin/netstat
 	GREP=/usr/bin/egrep
 	KSTAT=/usr/bin/kstat

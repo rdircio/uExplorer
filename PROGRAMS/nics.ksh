@@ -42,9 +42,9 @@ $ECHO "NDMFE=$NDMFE" #---gigabit capable
 
 #---wishlist: UNUSED_GB_PORTS and UNUSED_100FDX_PORTS
 
-$IFCONFIG -a| $GREP ":" |$GREP -v "ether|clpriv|lo|dman" | $NAWK '{ print $1 }' |  sed 's/\(.*\):/\1/' | while read i; do
+$IFCONFIG -a 2>/dev/null | $GREP ":" |$GREP -v "ether|clpriv|lo|dman" | $NAWK '{ print $1 }' |  sed 's/\(.*\):/\1/' | while read i; do
 	F=/tmp/${i}.$$
-	$IFCONFIG $i > $F
+	$IFCONFIG $i > $F 2>/dev/null
 	I=`cat $F | $GREP -v ":|group" | $NAWK '{ print $2 }'`
 	E=`cat $F | $GREP "ether" | $NAWK '{ print $2 }'`
 	GP=`cat $F | $GREP "groupname" | $NAWK '{ print $2 }'`

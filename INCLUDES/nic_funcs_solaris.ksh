@@ -29,20 +29,27 @@ downgraded(){
 	SP=$2
 	DUP=$3
 	M=`model $IF`
-	if [ $M = "ce" -o $M = "bge" -o $M = "ge" -o $M = "e1000g" -o $M = "iprb" -o $M = "dmfe" ];then
-		if  [ $SP -lt 1000 ];then
+	# if speed is non-numeric, we cannot tell, assume not downgraded
+	case "$SP" in
+		''|*[^0-9]*)
+			echo "DOWNGRADED=false"
+			return
+			;;
+	esac
+	if [ "$M" = "ce" -o "$M" = "bge" -o "$M" = "ge" -o "$M" = "e1000g" -o "$M" = "iprb" -o "$M" = "dmfe" ];then
+		if  [ "$SP" -lt 1000 ];then
 			echo "DOWNGRADED=true"
 		else
 			echo "DOWNGRADED=false"
 		fi
 	else
-                if  [ $SP -lt 100 ];then
+                if  [ "$SP" -lt 100 ];then
                         echo "DOWNGRADED=true"
                 else
                         echo "DOWNGRADED=false"
                 fi
 	fi
-	if [ $DUP = "half" ];then
+	if [ "$DUP" = "half" ];then
 		echo "DOWNGRADED=true"
 	fi
 }
@@ -74,12 +81,20 @@ speed(){
 	INSTANCE=$2
 	INTERFACE="${MODEL}${INSTANCE}"
 	DOWNGRADED="false"
+	# if model/instance are empty (eg. Solaris 11 net* interfaces), we can't determine speed
+	if [ -z "$MODEL" -o -z "$INSTANCE" ]; then
+    	$ECHO "SPEED="
+		$ECHO "DUPLEX="
+		$ECHO "AUTONEG="
+		$ECHO "DOWNGRADED=false"
+		return
+	fi
 	# Note: "ce" interfaces can be "UP" in "$IFCONFIG" but have link down
 	$IFCONFIG $INTERFACE | grep "^$INTERFACE:.*<UP," > /dev/null 2>&1 || continue
 	$ECHO $INTERFACE | grep "^cip" > /dev/null 2>&1 && continue
 	MODEL=`model $INTERFACE`
 	INSTANCE=`instance $INTERFACE`
-	if [ $MODEL = "ce" -o $MODEL = "e1000g" ]; then
+	if [ "$MODEL" = "ce" -o "$MODEL" = "e1000g" ]; then
 		kstat $MODEL:$INSTANCE > /tmp/kstat.$$
       DUPLEX=`cat /tmp/kstat.$$ | grep link_duplex | awk '{ print $2 }'`
       case "$DUPLEX" in
@@ -177,7 +192,7 @@ speed(){
          1) DUPLEX="full" ;;
          *) DUPLEX="" ;;
       esac
-	if [ $MODEL = "ge" ];then
+	if [ "$MODEL" = "ge" ];then
 		AUTO=`ndd -get /dev/$MODEL adv_1000autoneg_cap`
 	        case "$AUTO" in
                 	0) AUTO="off" ;;

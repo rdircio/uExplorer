@@ -1,11 +1,9 @@
 #!/bin/ksh
 
-EHOME=/export/home/rdircio/uExplorer
-. $EHOME/INCLUDES/settings.ksh
-. $EHOME/INCLUDES/unixcmds.ksh
+INQ_BIN="$EHOME/PROGRAMS/INQ/inq.sol64"
 
-
-INQ="$EHOME/PROGRAMS/INQ/inq.sol64 -no_dots"
+if [ -x "$INQ_BIN" ]; then
+INQ="$INQ_BIN -no_dots"
 (
 $INQ -sym_wwn |$GREP . | while read l;do $ECHO "SYMMETRIX $l";done
 $INQ -clar_wwn |$GREP . | while read l;do $ECHO "CLARIION $l";done
@@ -17,3 +15,4 @@ $INQ -shark_wwn |$GREP . | while read l;do $ECHO "SHARK $l";done
 $INQ -compaq_wwn |$GREP . | while read l;do $ECHO "COMPAQ $l";done
 $INQ -netapp_wwn |$GREP . | while read l;do $ECHO "NETAPP $l";done
 ) | $GREP -v '\---------|Device|Inquiry utility|EMC Corporation|For help type' | $NAWK '{ print $1 ";" $2 ";" $NF }'
+fi
